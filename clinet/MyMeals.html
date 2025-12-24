@@ -1,0 +1,188 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Meals</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 950px;
+            margin: 20px auto;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+
+        .topLinks a {
+            margin-right: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            font-size: 14px;
+        }
+
+        th {
+            background: #e0e0e0;
+        }
+
+        button {
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        .del {
+            background: #d32f2f;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+        }
+
+        #msg {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>My Meals</h1>
+
+    <div class="topLinks">
+        <a href="index.html">Main</a> |
+        <a href="NewMeal.html">New Meal</a> |
+        <a href="Login.html">Login</a>
+    </div>
+
+    <div>
+        <label>Search by name:</label>
+        <input id="searchName" type="text" placeholder="meal name">
+        <button id="btnSearch">Search</button>
+        <button id="btnClear">Clear</button>
+    </div>
+
+    <table id="mealsTable">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Area</th>
+                <th>Image</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="msg"></div>
+
+    <script>
+        const API_BASE = "../tar1/api";
+        const API_USERS = API_BASE + "/users";
+
+        function getUser() {
+            const txt = localStorage.getItem("loggedUser");
+            if (!txt) return null;
+            try { return JSON.parse(txt); } catch (e) { return null; }
+        }
+
+        function requireLogin() {
+            const u = getUser();
+            if (!u) {
+                alert("Please login first");
+                window.location.href = "Login.html";
+            }
+        }
+
+        function loadMyMeals(name) {
+            const u = getUser();
+            const userId = u.id || u.Id;
+
+            let url = API_USERS + "/" + userId + "/meals";
+            if (name && name.trim().length > 0) {
+                url += "?name=" + encodeURIComponent(name.trim());
+            }
+
+            $("#msg").css("color", "black").text("Loading...");
+
+            $.ajax({
+                url,
+                method: "GET",
+                success: function (data) {
+                    render(data || []);
+                    $("#msg").css("color", "green").text("Loaded " + (data || []).length + " meals");
+                },
+                error: function () {
+                    $("#msg").css("color", "red").text("Error loading meals");
+                }
+            });
+        }
+
+        function render(list) {
+            const $tb = $("#mealsTable tbody");
+            $tb.empty();
+
+            list.forEach(m => {
+                const id = m.id || m.Id;
+                const name = m.name || m.Name;
+                const cat = m.category || m.Category || "";
+                const area = m.area || m.Area || "";
+                const img = m.image || m.Image || "";
+
+                const row = $(`
+                    <tr>
+                        <td>${id}</td>
+                        <td>${name}</td>
+                        <td>${cat}</td>
+                        <td>${area}</td>
+                        <td>${img ? `<img src="${img}" width="80">` : ""}</td>
+                        <td><button class="del" data-id="${id}">Remove</button></td>
+                    </tr>
+                `);
+
+                row.find(".del").on("click", function () {
+                    removeMeal($(this).data("id"));
+                });
+
+                $tb.append(row);
+            });
+        }
+
+        function removeMeal(mealId) {
+            const u = getUser();
+            const userId = u.id || u.Id;
+
+            $.ajax({
+                url: API_USERS + "/" + userId + "/meals/" + mealId,
+                method: "DELETE",
+                success: function () {
+                    loadMyMeals($("#searchName").val());
+                },
+                error: function () {
+                    alert("Error removing meal");
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            requireLogin();
+
+            $("#btnSearch").on("click", () => loadMyMeals($("#searchName").val()));
+            $("#btnClear").on("click", () => { $("#searchName").val(""); loadMyMeals(""); });
+
+            loadMyMeals("");
+        });
+    </script>
+
+</body>
+</html>

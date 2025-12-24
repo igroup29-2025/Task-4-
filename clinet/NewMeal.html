@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Meal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 650px;
+            margin: 20px auto;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+
+        form {
+            background: #fff;
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input, textarea {
+            padding: 7px;
+        }
+
+        button {
+            padding: 8px 10px;
+        }
+
+        #msg {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>New Meal</h1>
+    <a href="index.html">Back</a>
+
+    <form id="f">
+        <input id="name" placeholder="Name (required)" />
+        <input id="category" placeholder="Category" />
+        <input id="area" placeholder="Area" />
+        <input id="image" placeholder="Image URL" />
+        <input id="video" placeholder="Video URL" />
+        <input id="source" placeholder="Source" />
+        <textarea id="ingredients" placeholder="Ingredients (comma separated)"></textarea>
+        <textarea id="instructions" placeholder="Instructions"></textarea>
+        <button type="submit">Save</button>
+    </form>
+
+    <div id="msg"></div>
+
+    <script>
+        const API_BASE = "../tar1/api";
+        const API_MEALS = API_BASE + "/meal";
+
+        function requireLogin() {
+            const u = localStorage.getItem("loggedUser");
+            if (!u) {
+                alert("Please login first");
+                window.location.href = "Login.html";
+            }
+        }
+
+        $(document).ready(function () {
+            requireLogin();
+
+            $("#f").on("submit", function (e) {
+                e.preventDefault();
+
+                const name = $("#name").val().trim();
+                if (!name) { $("#msg").css("color", "red").text("Name required"); return; }
+
+                const ingText = $("#ingredients").val().trim();
+                const ingArr = ingText ? ingText.split(",").map(x => x.trim()).filter(x => x) : [];
+
+                const payload = {
+                    Name: name,
+                    Category: $("#category").val().trim(),
+                    Area: $("#area").val().trim(),
+                    Image: $("#image").val().trim(),
+                    Video: $("#video").val().trim(),
+                    Source: $("#source").val().trim(),
+                    Instructions: $("#instructions").val().trim(),
+                    Ingredients: ingArr
+                };
+
+                $.ajax({
+                    url: API_MEALS,
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function () {
+                        $("#msg").css("color", "green").text("Saved!");
+                        setTimeout(() => window.location.href = "index.html", 700);
+                    },
+                    error: function () {
+                        $("#msg").css("color", "red").text("Error saving meal");
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

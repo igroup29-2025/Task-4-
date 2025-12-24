@@ -1,0 +1,134 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Seed Meals (One-time)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 760px;
+            margin: 20px auto;
+            background: #f5f5f5;
+            padding: 14px;
+        }
+
+        .card {
+            background: #fff;
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+        }
+
+        button {
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #seedBtn {
+            background: #0b5ed7;
+            color: #fff;
+        }
+
+            #seedBtn:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .ok {
+            color: #0a7a2a;
+        }
+
+        .bad {
+            color: #b00020;
+        }
+
+        .barWrap {
+            background: #e9ecef;
+            border-radius: 999px;
+            overflow: hidden;
+            height: 12px;
+        }
+
+        .bar {
+            height: 12px;
+            width: 0%;
+            background: #0b5ed7;
+        }
+
+        code {
+            background: #eef;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>Seed Meals (one-time)</h2>
+
+        <p class="muted">
+            This page loads <code>meals_250_MealsDB.json</code> and sends it to the server using
+            <code>POST /api/meal/bulkload</code>.
+            <br />
+            <b>Note:</b> No login is required for seeding.
+        </p>
+
+        <div class="row" style="margin:10px 0;">
+            <button id="seedBtn">Start Seed</button>
+            <span id="msg" class="muted"></span>
+        </div>
+
+        <div class="barWrap" style="margin-top:10px;">
+            <div class="bar" id="bar"></div>
+        </div>
+
+        <div style="margin-top:10px;" class="muted" id="progressText"></div>
+
+        <hr style="margin:16px 0;" />
+
+        <div class="muted">
+            <div><b>Important:</b></div>
+            <ul>
+                <li>Open this page from your tar3 URL (not as <code>file://</code>), otherwise the JSON fetch may fail.</li>
+                <li>Make sure <code>meals_250_MealsDB.json</code> is in the SAME folder as this page.</li>
+                <li>Client in tar3, server in tar1, so API base is <code>../tar1/api</code>.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "../tar1/api";
+        const API_MEALS = API_BASE + "/meal";
+
+        const JSON_FILE = "meals_250_MealsDB.json";
+        const BATCH_SIZE = 25;
+
+        function setProgress(done, total) {
+            const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+            $("#bar").css("width", pct + "%");
+            $("#progressText").text(`Progress: ${done}/${total} (${pct}%)`);
+        }
+
+        function mapToMeal(item) {
+            return {
+                Name: item.strMeal || "",
+                Category: item.strCategory || "",
+                Area: item.strArea || "",
+                Instructions: ite

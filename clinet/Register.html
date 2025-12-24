@@ -1,0 +1,86 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 420px;
+            margin: 40px auto;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+
+        .box {
+            background: #fff;
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+
+        button {
+            padding: 8px 10px;
+        }
+
+        #msg {
+            margin-top: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h2>Register</h2>
+
+        <input id="name" type="text" placeholder="Name" />
+        <input id="email" type="email" placeholder="Email" />
+        <input id="password" type="text" placeholder="Password" />
+
+        <button id="btnRegister" type="button">Register</button>
+        <button id="btnBack" type="button">Back</button>
+
+        <div id="msg"></div>
+    </div>
+
+    <script>
+        const API_BASE = "../tar1/api";
+        const API_USERS = API_BASE + "/users";
+
+        $("#btnBack").on("click", () => window.location.href = "index.html");
+
+        $("#btnRegister").on("click", function () {
+            const payload = {
+                Name: $("#name").val().trim(),
+                Email: $("#email").val().trim(),
+                Password: $("#password").val().trim(),
+                Active: true
+            };
+
+            $.ajax({
+                url: API_USERS + "/register",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function (user) {
+                    localStorage.setItem("loggedUser", JSON.stringify(user));
+                    window.location.href = "index.html";
+                },
+                error: function () {
+                    $("#msg").css("color", "red").text("Register failed");
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
