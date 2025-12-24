@@ -5,151 +5,117 @@
   <title>Seed Meals (One-time)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-  <style>
-    body { font-family: Arial; max-width: 760px; margin: 20px auto; background:#f5f5f5; padding: 14px; }
-    .card { background:#fff; padding: 14px; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
-    button { padding: 10px 14px; border:0; border-radius: 8px; cursor: pointer; }
-    #seedBtn { background:#0b5ed7; color:#fff; }
-    #seedBtn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .muted { color:#666; }
-    .ok { color: #0a7a2a; }
-    .bad { color: #b00020; }
-    .barWrap { background:#e9ecef; border-radius: 999px; overflow:hidden; height: 12px; }
-    .bar { height: 12px; width: 0%; background:#0b5ed7; }
-    code { background:#eef; padding:2px 6px; border-radius:6px; }
-  </style>
 </head>
+<body style="font-family:Arial; max-width:760px; margin:20px auto;">
 
-<body>
-  <div class="card">
-    <h2>Seed Meals (one-time)</h2>
+<h2>Seed Meals (one-time)</h2>
+<p>
+Loads <b>meals_250_MealsDB.json</b> and sends it to:
+<b>POST /api/meal/bulkload</b><br>
+<b>No login required.</b>
+</p>
 
-    <p class="muted">
-      Loads <code>meals_250_MealsDB.json</code> and sends it to the server using
-      <code>POST /api/meal/bulkload</code>.
-      <br><b>No login required.</b>
-    </p>
+<button id="seedBtn">Start Seed</button>
+<span id="msg" style="margin-left:10px;"></span>
 
-    <div class="row" style="margin:10px 0;">
-      <button id="seedBtn">Start Seed</button>
-      <span id="msg" class="muted"></span>
-    </div>
+<div style="margin-top:10px; background:#eee; height:12px; border-radius:999px; overflow:hidden;">
+  <div id="bar" style="height:12px; width:0%; background:#0b5ed7;"></div>
+</div>
+<div id="progressText" style="margin-top:8px; color:#666;"></div>
 
-    <div class="barWrap" style="margin-top:10px;">
-      <div class="bar" id="bar"></div>
-    </div>
+<script>
+  // ✅ Client in tar3, Server in tar1
+  const API_BASE = "../tar1/api";
+  const API_MEALS = API_BASE + "/meal";
 
-    <div style="margin-top:10px;" class="muted" id="progressText"></div>
+  const JSON_FILE = "meals_250_MealsDB.json";
+  const BATCH_SIZE = 25;
 
-    <hr style="margin:16px 0;" />
+  function setProgress(done, total) {
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    document.getElementById("bar").style.width = pct + "%";
+    document.getElementById("progressText").innerText = `Progress: ${done}/${total} (${pct}%)`;
+  }
 
-    <div class="muted">
-      <b>Important:</b>
-      <ul>
-        <li>Open from tar3 URL (not <code>file://</code>).</li>
-        <li><code>SeedMeals.html</code> and <code>meals_250_MealsDB.json</code> must be in the same folder.</li>
-      </ul>
-    </div>
-  </div>
+  function mapToMeal(item) {
+    return {
+      Name: item.strMeal || "",
+      Category: item.strCategory || "",
+      Area: item.strArea || "",
+      Instructions: item.strInstructions || "",
+      Image: item.strMealThumb || "",
+      Video: item.strYoutube || "",
+      Source: item.strSource || "",
+      Ingredients: Array.isArray(item.ingredients) ? item.ingredients.filter(x => x && x.trim()) : []
+    };
+  }
 
-  <script>
-    // ✅ Client is in tar3, Server is in tar1:
-    const API_BASE = "../tar1/api";
-    const API_MEALS = API_BASE + "/meal";
-
-    const JSON_FILE = "meals_250_MealsDB.json";
-    const BATCH_SIZE = 25;
-
-    function setProgress(done, total) {
-      const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-      $("#bar").css("width", pct + "%");
-      $("#progressText").text(`Progress: ${done}/${total} (${pct}%)`);
-    }
-
-    function mapToMeal(item) {
-      return {
-        Name: item.strMeal || "",
-        Category: item.strCategory || "",
-        Area: item.strArea || "",
-        Instructions: item.strInstructions || "",
-        Image: item.strMealThumb || "",
-        Video: item.strYoutube || "",
-        Source: item.strSource || "",
-        Ingredients: Array.isArray(item.ingredients) ? item.ingredients.filter(x => x && x.trim()) : []
-      };
-    }
-
-    function postBatch(batch) {
-      return $.ajax({
-        url: API_MEALS + "/bulkload",
-        method: "POST",
-        data: JSON.stringify(batch),
-        contentType: "application/json"
-      });
-    }
-
-    $(document).ready(function () {
-      $("#seedBtn").on("click", function () {
-        $("#seedBtn").prop("disabled", true);
-        $("#msg").removeClass("ok bad").addClass("muted").text("Loading JSON...");
-        $("#progressText").text("");
-        $("#bar").css("width", "0%");
-
-        $.getJSON(JSON_FILE)
-          .done(function (data) {
-            const raw = data && data.meals ? data.meals : [];
-            const meals = raw.map(mapToMeal).filter(m => m.Name.trim().length > 0);
-
-            const total = meals.length;
-            let sent = 0;
-            let insertedTotal = 0;
-
-            if (total === 0) {
-              $("#msg").removeClass("muted").addClass("bad").text("JSON loaded but meals list is empty.");
-              $("#seedBtn").prop("disabled", false);
-              return;
-            }
-
-            $("#msg").removeClass("muted").addClass("muted").text(`Seeding ${total} meals in batches of ${BATCH_SIZE}...`);
-            setProgress(0, total);
-
-            function next() {
-              if (sent >= total) {
-                $("#msg").removeClass("muted").addClass("ok").text(`Done! Inserted about ${insertedTotal} meals.`);
-                $("#seedBtn").prop("disabled", false);
-                setProgress(total, total);
-                return;
-              }
-
-              const batch = meals.slice(sent, sent + BATCH_SIZE);
-
-              postBatch(batch)
-                .done(function (res) {
-                  if (res && typeof res.inserted === "number") insertedTotal += res.inserted;
-
-                  sent += batch.length;
-                  setProgress(sent, total);
-                  $("#msg").removeClass("bad ok").addClass("muted").text(`Uploading... (${sent}/${total})`);
-                  next();
-                })
-                .fail(function (xhr) {
-                  $("#msg").removeClass("muted").addClass("bad").text("Error during bulkload. See console.");
-                  console.log("Bulkload failed:", xhr);
-                  $("#seedBtn").prop("disabled", false);
-                });
-            }
-
-            next();
-          })
-          .fail(function (xhr) {
-            $("#msg").removeClass("muted").addClass("bad").text("Cannot load meals_250_MealsDB.json (check path).");
-            console.log("JSON load failed:", xhr);
-            $("#seedBtn").prop("disabled", false);
-          });
-      });
+  function postBatch(batch) {
+    return $.ajax({
+      url: API_MEALS + "/bulkload",
+      method: "POST",
+      data: JSON.stringify(batch),
+      contentType: "application/json"
     });
-  </script>
+  }
+
+  $("#seedBtn").on("click", function () {
+    $("#seedBtn").prop("disabled", true);
+    $("#msg").css("color","#666").text("Loading JSON...");
+    setProgress(0, 1);
+
+    $.getJSON(JSON_FILE)
+      .done(function (data) {
+        const raw = data && data.meals ? data.meals : [];
+        const meals = raw.map(mapToMeal).filter(m => m.Name.trim().length > 0);
+
+        const total = meals.length;
+        if (total === 0) {
+          $("#msg").css("color","red").text("JSON loaded but meals list is empty.");
+          $("#seedBtn").prop("disabled", false);
+          return;
+        }
+
+        let sent = 0;
+        let insertedTotal = 0;
+
+        $("#msg").css("color","#666").text(`Seeding ${total} meals...`);
+        setProgress(0, total);
+
+        function next() {
+          if (sent >= total) {
+            $("#msg").css("color","green").text(`Done! Inserted about ${insertedTotal} meals.`);
+            $("#seedBtn").prop("disabled", false);
+            setProgress(total, total);
+            return;
+          }
+
+          const batch = meals.slice(sent, sent + BATCH_SIZE);
+
+          postBatch(batch)
+            .done(function (res) {
+              if (res && typeof res.inserted === "number") insertedTotal += res.inserted;
+              sent += batch.length;
+              setProgress(sent, total);
+              $("#msg").css("color","#666").text(`Uploading... (${sent}/${total})`);
+              next();
+            })
+            .fail(function (xhr) {
+              $("#msg").css("color","red").text("Error during bulkload. Open console.");
+              console.log("Bulkload failed:", xhr);
+              $("#seedBtn").prop("disabled", false);
+            });
+        }
+
+        next();
+      })
+      .fail(function (xhr) {
+        $("#msg").css("color","red").text("Cannot load meals_250_MealsDB.json (check path).");
+        console.log("JSON load failed:", xhr);
+        $("#seedBtn").prop("disabled", false);
+      });
+  });
+</script>
+
 </body>
 </html>
